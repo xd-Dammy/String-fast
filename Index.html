@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tic-Tac-Toe</title>
+  <style>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: white;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 100px);
+  gap: 5px;
+  margin: 20px auto;
+}
+
+.cell {
+  width: 100px;
+  height: 100px;
+  background: midnightblue;
+  font-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.cell:hover {
+  transform: scale(1.05);
+  background: #001f3f;
+}
+
+.cell.win {
+  background-color: #4CAF50;
+  color: orange;
+  animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.x { color: red; }
+.o { color: white; }
+
+button, select {
+  margin: 5px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+</style>
+</head>
+
+<body>
+  <h1>Tic-Tac-Toe</h1>
+
+  <div>
+    <button id="ai-mode">Play with AI</button>
+    <button id="two-player-mode">Two Players</button>
+  </div>
+
+  <select id="difficulty">
+    <option value="...select...">...select...</option>
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+
+  <div id="game-board" class="board"></div>
+
+  <p id="status">Select a mode to start</p>
+  <p id="score">X: 0 | O: 0</p>
+
+  <button id="restart">Restart</button>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  let board = Array(9).fill('');
+  let currentPlayer = 'X';
+  let gameMode = 'two-player'; // default mode
+  let difficulty = 'easy';
+  let scores = { X: 0, O: 0 };
+  let gameActive = true;
+
+  function createBoard() {
+    const boardElement = document.getElementById('game-board');
+    boardElement.innerHTML = '';
+
+    board.forEach((cell, index) => {
+      const cellElement = document.createElement('div');
+      cellElement.classList.add('cell');
+      cellElement.dataset.index = index;
+      cellElement.textContent = cell;
+
+      if (cell) cellElement.classList.add(cell === 'X' ? 'x' : 'o');
+
+      cellElement.addEventListener('click', handleCellClick);
+      boardElement.appendChild(cellElement);
+    });
+  }
+
+  function handleCellClick(e) {
+    const index = e.target.dataset.index;
+
+    if (board[index] || !gameActive) return;
+
+    makeMove(index, currentPlayer);
+
+    if (gameMode === 'ai' && gameActive) {
+      setTimeout(aiMove, 400);
+    } else {
+      switchPlayer();
+    }
+  }
+
+  function makeMove(index, player) {
+    board[index] = player;
+
+    const cell = document.querySelector(`[data-index="${index}"]`);
+    cell.textContent = player;
+    cell.classList.add(player === 'X' ? 'x' : 'o');
+
+    animateMove(cell);
+    checkResult();
+  }
+
+  function switchPlayer() {
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    document.getElementById('status').textContent = `${currentPlayer}'s turn`;
+  }
+
+  function aiMove() {
+    const empty = getEmptyIndices();
+    let index;
+
+    if (difficulty === 'hard') {
+      index = strategicMove(empty);
+    } else if (difficulty === 'medium') {
+      index = Math.random() < 0.5 
+        ? empty[Math.floor(Math.random() * empty.length)]
+        : strategicMove(empty);
+    } else {
+      index = empty[Math.floor(Math.random() * empty.length)];
+    }
+
+    makeMove(index, 'O');
+
+    if (gameActive) {
+      currentPlayer = 'X';
+      document.getElementById('status').textContent = "X's turn";
+    }
+  }
+
+  function strategicMove(empty) {
+    // Try to win
+    for (let i of empty) {
+      board[i] = 'O';
+      if (checkWin(board, 'O')) {
+        board[i] = '';
+        return i;
+      }
+      board[i] = '';
+    }
+
+    // Block player
+    for (let i of empty) {
+      board[i] = 'X';
+      if (checkWin(board, 'X')) {
+        board[i] = '';
+        return i;
+      }
+      board[i] = '';
+    }
+
+    const priority = [4, 0, 2, 6, 8];
+    for (let p of priority) {
+      if (empty.includes(p)) return p;
+    }
+
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  function getEmptyIndices() {
+    return board.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+  }
+
+  function checkWin(b, player) {
+    const patterns = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    return patterns.some(p => p.every(i => b[i] === player));
+  }
+
+  function checkResult() {
+    const patterns = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    for (let p of patterns) {
+      const [a,b,c] = p;
+
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        document.querySelectorAll(`[data-index="${a}"],[data-index="${b}"],[data-index="${c}"]`)
+          .forEach(el => el.classList.add('win'));
+
+        scores[board[a]]++;
+        document.getElementById('score').textContent = `X: ${scores.X} | O: ${scores.O}`;
+        document.getElementById('status').textContent = `${board[a]} wins!`;
+
+        gameActive = false;
+        return;
+      }
+    }
+
+    if (!board.includes('')) {
+      document.getElementById('status').textContent = "It's a draw!";
+      gameActive = false;
+    }
+  }
+
+  function animateMove(cell) {
+    cell.style.transform = 'scale(1.2)';
+    setTimeout(() => cell.style.transform = 'scale(1)', 200);
+  }
+
+  function resetGame() {
+    board.fill('');
+    currentPlayer = 'X';
+    gameActive = true;
+
+    scores = { X: 0, O: 0 }; // reset scores
+    document.getElementById('score').textContent = `X: 0 | O: 0`;
+    document.getElementById('status').textContent = "X's turn";
+
+    createBoard();
+  }
+
+  document.getElementById('ai-mode').addEventListener('click', () => {
+    gameMode = 'ai';
+    document.getElementById('status').textContent = "X's turn";
+    resetGame();
+  });
+
+  document.getElementById('two-player-mode').addEventListener('click', () => {
+    gameMode = 'two-player';
+    document.getElementById('status').textContent = "X's turn";
+    resetGame();
+  });
+
+  document.getElementById('difficulty').addEventListener('change', e => {
+    difficulty = e.target.value;
+  });
+
+  document.getElementById('restart').addEventListener('click', resetGame);
+
+  createBoard();
+
+});
+</script>
+
+</body>
+</html>
